@@ -1,0 +1,121 @@
+name: SGSI_Build
+
+on: 
+  workflow_dispatch:
+   inputs:
+      ROM_URL:
+        description: 'ROM_URL'
+        required: true
+        default: ''
+      TYPE:
+        description: 'OS TYPE'
+        required: true
+        default: 'Generic'
+      ROM:
+        description: 'Name of Rom'
+        required: true
+        default: ''
+      VERSION:
+        description: 'Android Version of Source'
+        required: true
+        default: '12'
+      SF:
+        description: 'Upload to Sourceforge'
+        required: true
+        default: 'false'
+      WeT:
+        description: 'Upload to WeTransfer'
+        required: true
+        default: 'true'
+      GHR:
+        description: 'Upload to GitHub Release'
+        required: true
+        default: 'false'
+
+env:              
+  ROM_URL: ${{ github.event.inputs.ROM_URL }}
+  TYPE: ${{ github.event.inputs.TYPE }}
+  VERSION: ${{ github.event.inputs.VERSION }}
+  ROM: ${{ github.event.inputs.ROM }}
+  GHR: ${{ github.event.inputs.GHR }}
+  SF: ${{ github.event.inputs.SF }}
+  WET: ${{ github.event.inputs.WET }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+       - name: Checkout
+         uses: actions/checkout@main
+           
+       - name: Setting up the SPICES
+         run: |
+            sudo apt-get install -y git unzip curl aria2 expect
+
+       - name: Cloning...
+         run: |
+             if [ "$VERSION" == "12" ]; then
+             git clone --recurse-submodules https://github.com/rahulkhatri137/SGSIs -b main SGSIs
+             elif [ "$VERSION" == "11" ]; then
+             git clone --recurse-submodules https://github.com/rahulkhatri137/SGSIs -b main11 SGSIs
+             fi
+             sudo bash SGSIs/setup.sh
+             sudo apt-get -y --purge remove "adoptopenjdk-11-hotspot"       
+               
+       - name: Building AB DEVICES SGSI...
+         run: |
+            sudo chmod -R 777 SGSIs; cd SGSIs ; sudo bash url2SGSI.sh $ROM_URL $TYPE:$ROM
+
+       - name: Repack output file ...
+         run: |            
+             cd SGSIs
+             sudo chmod -R 777 output ; cd output ; ls
+             gzip -qf9 *img ; ls
+             sudo rm -rf *.img
+
+       - name: Upload SGSI to SourceForge
+         continue-on-error: true
+         if: env.SF == 'true' 
+         run: |
+             cd SGSIs/output
+             ls
+             expect -c "
+             spawn sftp ${{ secrets.SFUSER }}@frs.sourceforge.net
+             expect \"yes/no\"
+             send \"yes\r\"
+             expect \"Password\"        
+             send \"${{ secrets.SFPASS }}\r\"
+             expect \"sftp> \"
+             send \"cd ${{ secrets.SFDIR }}\r\"
+             set timeout -1
+             send \"mkdir $ROM\r\"
+             expect \"sftp> \"
+             send \"cd $ROM\r\"
+             set timeout -1
+             send \"put *\r\"
+             expect \"Uploading\"
+             expect \"100%\"
+             expect \"sftp>\"
+             send \"bye\r\"
+             interact"
+
+       - name: Upload SGSI to WeTransfer...
+         continue-on-error: true
+         if: env.WET == 'true' 
+         run: |
+           cd SGSIs/output
+           curl -sL https://git.io/file-transfer | sh
+           ./transfer wet ./*img.gz
+
+
+       - name: Upload SGSI to action-gh-release...
+         if: env.GHR == 'true'
+         uses: softprops/action-gh-release@v1
+         with:
+           files: SGSIs/output/*.img.gz
+           name: SGSI137-${{ env.ROM }}-Android${{ env.VERSION }}
+           tag_name: ${{ env.VERSION }}
+           #body: Use actions auto bulid
+         env:
+            GH_TOKEN: ${{ secrets.GH_TOKEN }}
