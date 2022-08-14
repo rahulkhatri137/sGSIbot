@@ -27,6 +27,10 @@ on:
         description: 'Upload to WeTransfer'
         required: true
         default: 'true'
+      PD:
+        description: 'Upload to PixelDrain'
+        required: true
+        default: 'false'
       GHR:
         description: 'Upload to GitHub Release'
         required: true
@@ -40,6 +44,7 @@ env:
   GHR: ${{ github.event.inputs.GHR }}
   SF: ${{ github.event.inputs.SF }}
   WET: ${{ github.event.inputs.WET }}
+  PD: ${{ github.event.inputs.PD }}
 
 jobs:
   build:
@@ -109,10 +114,18 @@ jobs:
          if: env.WET == 'true' 
          run: |
            cd SGSIs/output
-           curl -sL https://git.io/file-transfer | sh
+           curl -sL https://git.io/file-transfer | sh ; sudo chmod a+x transfer
            ./transfer wet ./*img.gz
 
-       - name: Upload SGSI to GitHub Release...
+       - name: Upload SGSI to PixelDrain... # Credits - https://github.com/Fornax96
+         continue-on-error: true
+         if: env.PD == 'true' 
+         run: |
+           cd SGSIs/output
+           wget https://raw.githubusercontent.com/Fornax96/pdup/master/pdup ; sudo chmod a+x pdup
+           ./pdup ./*img.gz
+
+       - name: Upload SGSI to GitHub Release... # Credits - https://github.com/softprops
          if: env.GHR == 'true'
          uses: softprops/action-gh-release@v1
          with:
