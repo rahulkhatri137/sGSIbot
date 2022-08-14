@@ -74,6 +74,10 @@ jobs:
              gzip -qf9 *img ; ls
              sudo rm -rf *.img
 
+       - name: Show SGSI info...
+         run: |            
+             cd SGSIs/output; cat README.txt
+
        - name: Upload SGSI to SourceForge
          continue-on-error: true
          if: env.SF == 'true' 
@@ -108,8 +112,7 @@ jobs:
            curl -sL https://git.io/file-transfer | sh
            ./transfer wet ./*img.gz
 
-
-       - name: Upload SGSI to action-gh-release...
+       - name: Upload SGSI to GitHub Release...
          if: env.GHR == 'true'
          uses: softprops/action-gh-release@v1
          with:
