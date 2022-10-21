@@ -64,6 +64,8 @@ jobs:
              git clone --recurse-submodules https://github.com/rahulkhatri137/SGSIs -b main SGSIs
              elif [ "$VERSION" == "11" ]; then
              git clone --recurse-submodules https://github.com/rahulkhatri137/SGSIs -b main11 SGSIs
+             elif [ "$VERSION" == "13" ]; then
+             git clone --recurse-submodules https://github.com/rahulkhatri137/SGSIs -b main13 SGSIs
              fi
              sudo bash SGSIs/setup.sh
              sudo apt-get -y --purge remove "adoptopenjdk-11-hotspot"       
